@@ -1,0 +1,14 @@
+LESSONS LEARNED FROM TRAINING
+==================================================
+The following corrections were identified during training. Apply them carefully when predicting on new frames.
+
+[MELT POOL STABILITY]
+- Re-check Melt Pool Stability using Rule 7(ii) and 7(d) to evaluate thermal appearance and metadata support for instability rather than defaulting to Stable.
+
+[SPATTER PARTICLE SIZE]
+- Re-evaluate spatter metadata total area according to Rule 4(ii) to correctly classify as Small.
+- Follow rule 4(ii) and evaluate validated spatter area metadata to classify Spatter Particle Size as Fine when total_area is 45 or below.
+
+[SPATTER VOLUME]
+- Re-evaluate spatter count according to Rule 5(i) to correctly classify as Minimal.
+- Follow rule 5(i) and classify Spatter Volume as Moderate when SpatterCount is between 5 and 14.

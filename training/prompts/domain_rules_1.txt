@@ -1,0 +1,264 @@
+#### domain rules
+1. Category Precedence rule
+(i) Weld State because it controls whether arc, melt pool, and quality labels are applicable.
+(ii) Arc Stability 
+(iii) Spatter Particle Size
+(iv) Spatter Volume
+(v) Melt Pool Length
+(vi) Melt Pool Stability
+(vii) Quality
+-------------------------------------------
+
+2. WELD STATE
+
+Valid labels: Arc Ignition | Welding
+Primary evidence:  thermal image
+Secondary evidence: voltage/current signal plots
+
+Arc Ignition:
+  Visual:    bright circular burst, no developed trailing melt pool
+  Metadata:  elongation near 1.0, high circularity, small hotspot_centroid_distance_px, low area_px
+  Signal:    pre-arc or ignition-like signal behavior
+  Hard exclusion only applies if the metadata region is visually confirmed to be the actual melt pool. 
+  If metadata bbox/centroid is near colorbar, border, text, or isolated spatter, ignore shape metadata 
+  for Weld State.
+
+Welding:
+  Visual:    melt pool visible with arc present; may or may not have a developed tail
+  Metadata:  elongation > 1.1, significant hotspot_centroid_distance_px, visible segmented pool
+  Signal:    active voltage/current behavior
+
+3. ARC STABILITY
+
+Valid labels: Stable | Unstable | N/A
+Primary evidence:  voltage/current signal plots
+Secondary evidence: hotspot position, thermal gradient, metadata
+
+3. (i) If Weld State = Welding, ARC STABILITY: Stable | Unstable; Otherwise: N/A.
+3. (ii) If Weld State = Welding, follow the rules below
+
+Stable:
+  Signal:    regular behavior, low anomaly count, no strong extinction or arc-collapse events
+  Visual:    hotspot compact and reasonably centered, smooth thermal gradient
+  Metadata:  gradient_std < 55 AND hotspot not near pool boundary
+
+Unstable:
+  Signal:    strong spikes, residual fluctuation, extinction/arc-collapse events, unstable trend, abnormal transients
+  Visual:    hotspot offset / diffuse / near or outside pool boundary, irregular or patchy thermal distribution
+  Metadata:  gradient_std > 65 OR large hotspot_centroid_distance_px OR visually erratic arc
+
+Priority rule: if signal plots are available and clearly show instability → prioritize signal over metadata
+Fallback: if signal plots unavailable → use thermal image and metadata
+
+4. SPATTER PARTICLE SIZE
+
+Valid labels: Fine | Small | Medium | Large | N/A
+N/A only when Spatter Volume = None.
+
+Primary evidence: validated spatter metadata, especially total_area, together with visible spatter characteristics in the thermal image.
+Signal plots CANNOT determine particle size.
+
+4. (i) Even if WELD STATE: Arc Ignition, look for scattered spatter all over the frame, 
+then follow 4(ii). If WELD STATE: Welding, follow 4(ii)
+4. (ii)  If SpatterCount > 0, classify Spatter Particle Size using the following ordered rules:
+  Medium:
+   total_area >= 99
+  Small:
+   96 <= total_area < 99
+  Large:
+   46 <= total_area < 96
+  Fine:
+   total_area <= 45
+
+Apply the rules in this order so that each frame receives only one Spatter Particle Size label.
+4. (iii) If spatter_count = 0, Spatter Particle Size = N/A
+
+5. SPATTER VOLUME
+Valid labels: None | Minimal | Moderate | Extreme
+Primary evidence:  spatter_count from metadata + visual spatter in thermal image
+Secondary evidence: signal instability, spikes, arc-collapse (indirect support only; cannot replace count)
+
+5. (i) If SPATTER found then follow these clasification
+None:
+- SpatterCount = 0
+Minimal:
+- SpatterCount = 1–4
+Moderate:
+- SpatterCount = 5–14
+Extreme:
+- SpatterCount > 14
+
+5. (ii) If SpatterCount is zero then SPATTER VOLUME = None
+
+6. MELT POOL LENGTH
+Valid labels: Short | Nominal | N/A
+Primary evidence:  thermal image and shape metadata (bbox_aspect_ratio, elongation, visible tail)
+Signal plots CANNOT determine melt pool length.
+
+6. (i) If WELD STATE = Arc Ignition, then MELT POOL LENGTH: N/A 
+6. (ii) If WELD STATE = Welding, then follow the rules bellow:
+Evaluate N/A first.
+
+N/A:
+Classify Melt Pool Length = N/A when the melt-pool region is absent or extremely small.
+
+Strong metadata indicators:
+- Area <= 5.13
+- Width <= 3.1
+- Height <= 2.5
+
+Additional supporting indicators:
+- Perimeter <= 9.43
+- FeretDiameter0 <= 32
+- FeretDiameter90 <= 26
+- Moment2y <= 30.91
+
+If the metadata indicates an extremely small pool and the thermal image does not show a developed melt pool, classify Melt Pool Length as N/A.
+
+6. (iii) If the melt pool is present and not N/A, classify Short or Nominal.
+
+Short:
+Primary rule:
+- Moment2y <= 822.37
+
+Supporting metadata:
+- Area <= 105.99
+- Height <= 11.9
+- FeretDiameter90 <= 120
+- Perimeter <= 41.72
+
+Visual support:
+- compact melt pool
+- weak or underdeveloped trailing region
+- limited extension in the deposition direction
+
+Nominal:
+Primary rule:
+- Moment2y >= 826.91
+
+Supporting metadata:
+- Area >= 106.11
+- Height >= 12.3
+- FeretDiameter90 >= 124
+
+Visual support:
+- clearly developed melt pool
+- visible trailing region
+- extended melt pool in the deposition direction
+
+6. (iv) Boundary cases
+
+If:
+822.37 < Moment2y < 826.91
+
+do not force the classification from Moment2y alone.
+
+Use the supporting metadata together:
+
+Short is supported when most available indicators favor:
+- Area <= 105.99
+- Height <= 11.9
+- FeretDiameter90 <= 120
+
+Nominal is supported when most available indicators favor:
+- Area >= 106.11
+- Height >= 12.3
+- FeretDiameter90 >= 124
+
+Use the thermal image as the final supporting evidence when the metadata values fall within the threshold gaps.
+
+7. MELT POOL STABILITY
+
+Valid labels: Stable | Unstable | N/A
+
+Primary evidence: thermal image and melt-pool shape metadata.
+Signal plots may provide supporting context only.
+Signal plots CANNOT alone determine Melt Pool Stability.
+
+7. (i) Evaluate N/A first.
+
+N/A:
+Classify Melt Pool Stability = N/A when the melt-pool region is absent or extremely small.
+
+Strong metadata indicators:
+- Area <= 5.13
+- Width <= 3.1
+- Height <= 2.5
+
+Additional supporting indicators:
+- Perimeter <= 9.43
+- FeretDiameter0 <= 32
+- FeretDiameter90 <= 26
+- Moment2x <= 64.87
+- Moment2y <= 30.91
+
+If the metadata indicates an extremely small region and the thermal image does not show a developed central melt pool, classify as N/A.
+
+
+7. (ii) If a developed melt pool is present, evaluate Unstable.
+
+Unstable:
+Strong metadata indicators:
+- Compactness <= 0.64
+- StructureFactor <= 0.56
+
+Additional supporting indicators:
+- Width >= 11.2
+- FeretDiameter0 >= 113
+- Eccentricity >= 0.84
+- Anisometry <= 1.50
+
+Classify Melt Pool Stability = Unstable when the thermal image shows an irregular or distorted melt-pool region and the metadata provides consistent support.
+
+Do not classify Unstable from Width or FeretDiameter0 alone, because large melt-pool dimensions can also occur in stable pools.
+
+
+7. (iii) If the melt pool is present and the Unstable conditions are not sufficiently supported, evaluate Stable.
+
+Stable:
+Strong metadata indicators:
+- Height >= 11.9
+- FeretDiameter90 >= 120
+- Moment2y >= 744.74
+
+Additional supporting indicators:
+- Area >= 94.32
+- Perimeter >= 38.35
+- Compactness >= 0.63
+
+Classify Melt Pool Stability = Stable when the developed melt pool is visually coherent and the metadata predominantly supports the Stable conditions.
+
+
+7. (iv) Conflict resolution
+
+Apply the following precedence:
+
+a) Extremely small or absent melt pool → N/A
+
+b) Otherwise, if the thermal image shows an irregular melt-pool shape and the strong Unstable indicators
+   Compactness <= 0.64 and/or StructureFactor <= 0.56
+   are supported by additional Unstable evidence → Unstable
+
+c) Otherwise, if the melt pool is developed and the Stable indicators
+   Height >= 11.9,
+   FeretDiameter90 >= 120,
+   and Moment2y >= 744.74
+   are predominantly satisfied → Stable
+
+d) When individual metadata indicators conflict, use the thermal appearance of the melt-pool shape and the overall pattern of metadata evidence rather than relying on a single threshold.
+
+8. QUALITY
+
+Valid labels: Good | Bad | N/A
+
+8 (i) if Weld State = Arc Ignition, then QUALITY = N/A.
+8 (ii) If ARC STABILITY = Unstable, then QUALITY = Bad. No need to check further.
+8 (iii) If ARC STABILITY = Stable BUT MELT POOL STABILITY = Unstable, QUALITY = Bad. No need to check further.   
+8 (iv) If ARC STABILITY = Stable and MELT POOL STABILITY = Stable, 
+BUT Spatter Particle Size = Large AND Spatter Volume = Extreme,
+then QUALITY = Bad.
+8 (v) If 8 (i) to (iv) not satisfy then QUALITY = Good  
+
+
+
+
