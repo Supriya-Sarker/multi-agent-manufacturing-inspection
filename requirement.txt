@@ -1,0 +1,41 @@
+# --- AI & Vision Models ---
+torch
+transformers
+accelerate
+bitsandbytes
+Pillow
+
+# --- Embeddings (RAG) ---
+sentence-transformers
+
+# --- Vector Store (RAG Index) ---
+faiss-cpu
+
+# --- LangChain Framework ---
+langchain
+langchain-openai
+langchain-google-genai
+langchain-community
+
+# --- Google Gemini SDK ---
+google-generativeai
+
+# --- Data & Utilities ---
+python-dotenv
+pydantic
+numpy
+pandas
+matplotlib
+tqdm
+
+# --- Search / Tools ---
+wikipedia
+ddgs
+# duckduckgo-search  # no need as ddgs is added
+
+# --- Image Processing (For Xiris Converter) ---
+numpy
+opencv-python
+
+#run the venv
+# source ./venv/bin/activate

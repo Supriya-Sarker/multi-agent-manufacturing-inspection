@@ -1,0 +1,11 @@
+training/images/*
+!training/images/frame_difference.py
+!training/images/updated_meta_data_to_image.py
+training/signals/
+
+venv/
+__pycache__/
+*.pyc
+.DS_Store
+.env
+.ipynb_checkpoints/
